@@ -20,7 +20,7 @@ namespace ExtensibleSaveFormat
             Hooks.InstallHooks();
         }
 
-        internal static WeakKeyDictionary<ChaFile, Dictionary<string, object>> internalDictionary = new WeakKeyDictionary<ChaFile, Dictionary<string, object>>();
+        internal static WeakKeyDictionary<ChaFile, Dictionary<string, PluginData>> internalDictionary = new WeakKeyDictionary<ChaFile, Dictionary<string, PluginData>>();
 
         #region Events
 
@@ -42,20 +42,20 @@ namespace ExtensibleSaveFormat
 
         #endregion
 
-        public static Dictionary<string, object> GetAllExtendedData(ChaFile file)
+        public static Dictionary<string, PluginData> GetAllExtendedData(ChaFile file)
         {
             return internalDictionary.Get(file);
         }
 
-        public static Dictionary<string, object> GetExtendedDataById(ChaFile file, string id)
+        public static PluginData GetExtendedDataById(ChaFile file, string id)
         {
-            object extendedSection = null;
+            PluginData extendedSection = null;
             if (internalDictionary.Get(file).TryGetValue(id, out extendedSection))
-                return extendedSection as Dictionary<string, object>;
+                return extendedSection;
             return null;
         }
 
-        public static void SetExtendedDataById(ChaFile file, string id, Dictionary<string, object> extendedFormatData)
+        public static void SetExtendedDataById(ChaFile file, string id, PluginData extendedFormatData)
         {
             internalDictionary.Get(file)[id] = extendedFormatData;
         }

@@ -1,6 +1,7 @@
 ﻿using Harmony;
 using BepInEx;
 using ChaCustom;
+using ExtensibleSaveFormat;
 using KoikatsuUnlimited.Shared;
 using System;
 using System.Collections.Generic;
@@ -26,9 +27,9 @@ namespace KoikatsuUnlimited
             get { return OverridingCharacterReference.IsAlive ? OverridingCharacterReference.Target as ChaFile : null; }
             set { OverridingCharacterReference.Target = value; }
         }
-        public static Dictionary<string, object> OverridingData = null;
+        public static PluginData OverridingData = null;
 
-        internal static WeakKeyDictionary<ChaFile, Dictionary<String, object>> CharactersData = new WeakKeyDictionary<ChaFile, Dictionary<String, object>>();
+        internal static WeakKeyDictionary<ChaFile, PluginData> CharactersData = new WeakKeyDictionary<ChaFile, PluginData>();
 
         #region MonoBehaviour
         void Awake()
@@ -80,7 +81,11 @@ namespace KoikatsuUnlimited
 
             original = AccessTools.Method(typeof(ChaControl), "SetCreateTexture");
             prefix = new HarmonyMethod(typeof(KoikatsuUnlimited).GetMethod("SetCreateTexturePrefix"));
-            harmony.Patch(original, prefix, /*postfix*/null);
+            harmony.Patch(original, prefix, null);
+
+            original = AccessTools.Method(typeof(ChaControl), "LoadCharaFbxData");
+            postfix = new HarmonyMethod(typeof(KoikatsuUnlimited).GetMethod("ChangeHairPostfix"));
+            harmony.Patch(original, null, postfix);
 
             original = AccessTools.Method(typeof(CustomControl), "Entry");
             postfix  = new HarmonyMethod(typeof(KoikatsuUnlimited).GetMethod("CustomEntryPostfix"));
@@ -119,7 +124,7 @@ namespace KoikatsuUnlimited
                 return false;
             //BepInEx.BepInLogger.Log($"GetTextureOverride ({type} : {OverridingData.GetHashCode()})", true);
             object tryPath;
-            bool okGet = OverridingData.TryGetValue(name, out tryPath);
+            bool okGet = OverridingData.data.TryGetValue(name, out tryPath);
             if (okGet)
             {
                 path = Path.Combine(OverridesDir, type);
@@ -178,6 +183,27 @@ namespace KoikatsuUnlimited
             // we failed to override this texture
             return true;
         }
+
+        public static void ChangeHairPostfix(ChaControl __instance, ref GameObject __result, int category, int id)
+        {
+            return;
+            if (category != (int)ChaListDefine.CategoryNo.bo_hair_f)
+                return;
+            int kind = 1;
+            BepInEx.BepInLogger.Log($"Try to override texture {kind}", true);
+            if (__result == null)
+                return;
+            ChaCustomHairComponent cmp = __result.GetComponent<ChaCustomHairComponent>();
+            try
+            {
+                BepInEx.BepInLogger.Log($"Try to override texture {kind} ({cmp.rendHair.Length})", true);
+                Texture2D texture2D = ResourceRedirector.AssetLoader.LoadTexture("K:\\test.png");
+                cmp.rendHair[0].material.SetTexture(ChaShader._ColorMask, texture2D);
+                cmp.rendHair[0].material.SetTexture(ChaShader._DetailMask, texture2D);
+                BepInEx.BepInLogger.Log($"We did it!", true);
+            }
+            catch (System.Exception) { }
+        }
         #endregion
 
         #region ExtensibleSaveFormat
@@ -189,14 +215,14 @@ namespace KoikatsuUnlimited
             ExtensibleSaveFormat.ExtensibleSaveFormat.SetExtendedDataById(file, ID, CharactersData.Get(file));
         }
 
-        private static Dictionary<string, object> LimitedLoadDictionary;
+        private static PluginData LimitedLoadDictionary;
         void OnCardLoad(ChaFile file)
         {
             ChaFile targetFile = file;
             var data = ExtensibleSaveFormat.ExtensibleSaveFormat.GetExtendedDataById(file, ID);
             if (data == null)
             {
-                data = new Dictionary<string, object>();
+                data = new PluginData();
             }
             CharactersData.Set(file, data);
             BepInEx.BepInLogger.Log($"OnCardLoad {file.GetHashCode()} {data.GetHashCode()}", true);

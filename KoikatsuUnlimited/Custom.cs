@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ExtensibleSaveFormat;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -32,9 +33,9 @@ namespace KoikatsuUnlimited
 
         internal static WeakReference CustomScene = new WeakReference(null);
         internal static WeakReference CustomCharacter = new WeakReference(null);
-        internal static Dictionary<string, object> CustomOverrides = null;
+        internal static PluginData CustomOverrides = null;
 
-        public static void SetOverrideDictionary(Dictionary<string, object> dict, bool face, bool body, bool hair, bool parameter, bool coordinate)
+        public static void SetOverrideDictionary(PluginData dict, bool face, bool body, bool hair, bool parameter, bool coordinate)
         {
             if (face)
             {
@@ -42,23 +43,23 @@ namespace KoikatsuUnlimited
                 object value;
                 foreach (string k in keys)
                 {
-                    CustomOverrides[k] = dict.TryGetValue(k, out value) ? value as string : "";
+                    CustomOverrides.data[k] = dict.data.TryGetValue(k, out value) ? value as string : "";
                 }
             }
 
             object v;
             for (int i = 0; i < UIItems.Count; i++)
             {
-                UIItems[i].value = CustomOverrides.TryGetValue(UIItems[i].name, out v) ? v as string : "";
+                UIItems[i].value = CustomOverrides.data.TryGetValue(UIItems[i].name, out v) ? v as string : "";
             }
         }
 
         private static void SetOverride(string name, string value)
         {
             if (value.IsNullOrEmpty())
-                CustomOverrides.Remove(name);
+                CustomOverrides.data.Remove(name);
             else
-                CustomOverrides[name] = value;
+                CustomOverrides.data[name] = value;
         }
 
         internal static void DrawWindow()

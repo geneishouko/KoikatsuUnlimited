@@ -24,29 +24,6 @@ namespace ExtensibleSaveFormat
 
         }
 
-        public static void ExamineDictionary(Dictionary<string, object> dict)
-        {
-            try
-            {
-                BepInEx.BepInLogger.Log($"ExamineDictionary Keys: {dict.Keys.Count}");
-                foreach (KeyValuePair<string, object> kv in dict)
-                {
-                    BepInEx.BepInLogger.Log($"Got Section called ({kv.Key})");
-                    Dictionary<string, object> subdict = kv.Value as Dictionary<string, object>;
-                    BepInEx.BepInLogger.Log($"subdict is null? ({subdict == null})");
-                    BepInEx.BepInLogger.Log($"Got Section called ({kv.Key}) with ({(kv.Value as Dictionary<string, object>).Values.Count}) keys");
-                    foreach (KeyValuePair<string, object> rules in subdict)
-                    {
-                        BepInEx.BepInLogger.Log($"Got keypair ({rules.Key}) ({rules.Value as string})");
-                    }
-                }
-            }
-            catch (System.Exception e)
-            {
-                BepInEx.BepInLogger.Log($"ExamineDictionary Exception {e.ToString()}");
-            }
-        }
-
         public static void SaveFileHook(ChaFile __instance, bool __result, BinaryWriter bw, bool savePng)
         {
             if (!__result)
@@ -54,16 +31,16 @@ namespace ExtensibleSaveFormat
 
             ExtensibleSaveFormat.writeEvent(__instance);
 
-            Dictionary<string, object> extendedData = ExtensibleSaveFormat.GetAllExtendedData(__instance);
+            Dictionary<string, PluginData> extendedData = ExtensibleSaveFormat.GetAllExtendedData(__instance);
             if (extendedData == null )
                 return;
-            ExamineDictionary(extendedData);
+
             byte[] bytes = MessagePackSerializer.Serialize(extendedData);
 
             BepInEx.BepInLogger.Log($"Extended Data Keys: {extendedData.Keys.ToString()}");
-            foreach (KeyValuePair<string,object> kv in extendedData)
+            foreach (KeyValuePair<string, PluginData> kv in extendedData)
             {
-                Dictionary<string, object> dict = kv.Value as Dictionary<string, object>;
+                PluginData dict = kv.Value as PluginData;
                 BepInEx.BepInLogger.Log($"Extended Data: {kv.Key}: {dict.ToString()}");
             }
 
@@ -74,7 +51,7 @@ namespace ExtensibleSaveFormat
 
         public static void LoadFileHook(ChaFile __instance, bool __result, BinaryReader br, bool noLoadPNG, bool noLoadStatus)
         {
-            Dictionary<string, object> dictionary = null;
+            Dictionary<string, PluginData> dictionary = null;
 
             if (!__result)
                 return;
@@ -86,18 +63,17 @@ namespace ExtensibleSaveFormat
                 if (length > 0)
                 {
                     byte[] bytes = br.ReadBytes(length);
-                    dictionary = MessagePackSerializer.Deserialize<Dictionary<string, object>>(bytes);
+                    dictionary = MessagePackSerializer.Deserialize<Dictionary<string, PluginData>>(bytes);
                 }
             }
             catch (EndOfStreamException) { }
+            catch (System.InvalidOperationException) { /* Invalid/unexpected data */ }
 
             if (dictionary == null)
             {
                 //initialize a new dictionary since it doesn't exist
-                dictionary = new Dictionary<string, object>();
+                dictionary = new Dictionary<string, PluginData>();
             }
-
-            ExamineDictionary(dictionary);
 
             ExtensibleSaveFormat.internalDictionary.Set(__instance, dictionary);
             ExtensibleSaveFormat.readEvent(__instance);
